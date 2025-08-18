@@ -1,0 +1,53 @@
+# Express + No Auth Template
+
+Simple MCP server without authentication - perfect for public APIs and development.
+
+## Quick Start
+
+```bash
+git clone <template-repo>
+cd template-express-no-auth
+npm install
+npm run dev
+```
+
+## Environment
+```bash
+SERVER_URL=http://localhost:3000
+PORT=3000
+```
+
+## Resource Example
+```typescript
+const productResource = createResource({
+  name: "product",
+  schema: ProductSchema,
+  uri_template: "products/{id}",
+  methods: {
+    create: { handler: async (data) => createProduct(data) },
+    list: { handler: async () => listProducts() },
+    get: { handler: async ({ id }) => getProduct(id) },
+    update: { handler: async ({ id, ...data }) => updateProduct(id, data) },
+    delete: { handler: async ({ id }) => deleteProduct(id) },
+  },
+});
+```
+
+## Handler Pattern
+```typescript
+// No authentication - handlers only receive data
+handler: async (data) => {
+  return await processData(data);
+}
+```
+
+## Usage
+```bash
+# No authentication required
+curl http://localhost:3000/api/products
+curl -X POST http://localhost:3000/api/products -d '{"name":"Product"}'
+```
+description:
+globs:
+alwaysApply: false
+---
