@@ -1,0 +1,187 @@
+# Resource Design Patterns for MCP Servers
+
+## Basic CRUD Resource
+The foundation of any MCP server - define your data model and get full CRUD operations:
+
+```typescript
+const productResource = createResource({
+  name: "product",
+  schema: ProductSchema,
+  uri_template: "products/{id}",
+  methods: {
+    create: { 
+      description: "Create a new product",
+      handler: async (data) => createProduct(data) 
+    },
+    list: { 
+      description: "List all products",
+      handler: async () => listProducts() 
+    },
+    get: { 
+      description: "Get a product by ID",
+      handler: async ({ id }) => getProduct(id) 
+    },
+    update: { 
+      description: "Update an existing product",
+      handler: async ({ id, ...data }) => updateProduct(id, data) 
+    },
+    delete: { 
+      description: "Delete a product",
+      handler: async ({ id }) => deleteProduct(id) 
+    },
+  },
+});
+```
+
+## Advanced Resource Patterns
+
+### Search and Filtering
+```typescript
+search: {
+  description: "Search products by name, description, or category with advanced filtering",
+  inputSchema: z.object({
+    query: z.string().describe("Search term for name or description"),
+    category: z.string().optional().describe("Filter by category"),
+    priceMin: z.number().optional().describe("Minimum price filter"),
+    priceMax: z.number().optional().describe("Maximum price filter"),
+    tags: z.array(z.string()).optional().describe("Filter by tags"),
+    inStock: z.boolean().optional().describe("Filter by stock availability"),
+    limit: z.number().optional().default(20).describe("Maximum results"),
+    offset: z.number().optional().default(0).describe("Pagination offset"),
+  }),
+  handler: async ({ query, category, priceMin, priceMax, tags, inStock, limit, offset }) => {
+    return searchProducts({ 
+      query, category, priceMin, priceMax, tags, inStock, limit, offset 
+    });
+  },
+}
+```
+
+### Bulk Operations
+```typescript
+bulk_update: {
+  description: "Update multiple products at once with transaction safety",
+  inputSchema: z.object({
+    ids: z.array(z.string()).describe("Array of product IDs to update"),
+    updates: z.object({
+      price: z.number().positive().optional(),
+      category: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      status: z.enum(["active", "inactive", "discontinued"]).optional(),
+    }).describe("Updates to apply to all products"),
+  }),
+  handler: async ({ ids, updates }) => {
+    // No authentication required - public API
+    return await bulkUpdateProducts(ids, updates);
+  },
+}
+```
+
+### Complex Queries
+```typescript
+get_analytics: {
+  description: "Get comprehensive analytics for products",
+  inputSchema: z.object({
+    timeRange: z.enum(["day", "week", "month", "year"]).default("month"),
+    groupBy: z.enum(["category", "tags", "status"]).optional(),
+  }),
+  handler: async ({ timeRange, groupBy }) => {
+    const analytics = await getProductAnalytics(timeRange, groupBy);
+    return {
+      totalProducts: analytics.total,
+      activeProducts: analytics.active,
+      discontinuedProducts: analytics.discontinued,
+      byCategory: analytics.byCategory,
+      byTags: analytics.byTags,
+      timeSeries: analytics.timeSeries,
+      insights: analytics.insights,
+    };
+  },
+}
+```
+
+## Relationships Between Resources
+
+Define connections to help AI agents understand your data structure:
+
+```typescript
+const productResource = createResource({
+  name: "product",
+  schema: ProductSchema,
+  uri_template: "products/{id}",
+  relations: {
+    categoryId: { type: "category" },      // Product belongs to one category
+    tagIds: { type: "tag" },               // Product can have multiple tags
+    manufacturerId: { type: "manufacturer" }, // Product belongs to one manufacturer
+    supplierIds: { type: "supplier" },     // Product can have multiple suppliers
+  },
+  methods: { /* ... */ },
+});
+```
+
+## Handler Patterns
+
+### Public Access
+```typescript
+// All endpoints are public - no authentication required
+handler: async (data) => {
+  // No user context - public API
+  return await processData(data);
+}
+```
+
+### Data Validation and Security
+```typescript
+update: {
+  description: "Update a product with validation",
+  handler: async ({ id, ...data }) => {
+    const product = await getProduct(id);
+    if (!product) throw new Error("Product not found");
+    
+    // Validate data against schema
+    const validatedData = ProductUpdateSchema.parse(data);
+    
+    return await updateProduct(id, validatedData);
+  },
+}
+```
+
+### Error Handling
+```typescript
+handler: async (data) => {
+  try {
+    // Your logic here
+    return await processData(data);
+  } catch (error) {
+    if (error.code === 'NOT_FOUND') {
+      throw new Error(`Resource not found: ${error.message}`);
+    }
+    if (error.code === 'VALIDATION_ERROR') {
+      throw new Error(`Invalid data: ${error.message}`);
+    }
+    
+    // Log unexpected errors
+    console.error('Unexpected error:', error);
+    throw new Error('Internal server error');
+  }
+}
+```
+
+## Best Practices
+
+1. **Descriptive Names**: Use clear, descriptive names for resources and methods
+2. **Input Validation**: Always validate inputs with Zod schemas
+3. **Error Messages**: Provide clear, actionable error messages
+4. **Schema Exposure**: Use `exposeTypes: true` for better AI agent understanding
+5. **Method Descriptions**: Write clear descriptions for all custom methods
+6. **Type Safety**: Leverage TypeScript and Zod for compile-time safety
+7. **Public API Design**: Design for public consumption with proper validation
+8. **Rate Limiting**: Consider implementing rate limiting for public APIs
+description: Resource design patterns and best practices for public MCP servers
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+description:
+globs:
+alwaysApply: false
+---

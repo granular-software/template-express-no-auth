@@ -1,0 +1,194 @@
+# No Authentication for Public MCP Servers
+
+## Public API Design
+
+This template is designed for public APIs, open data services, or development environments where no authentication is required:
+
+```typescript
+const server = createMCPServer({
+  name: "public_api",
+  resources: [resource],
+  // No auth field = public access
+});
+```
+
+## Handler Patterns
+
+### No User Context
+```typescript
+// Handlers receive no user context - public access
+handler: async (data) => {
+  // No authentication required
+  // No user object available
+  return await processData(data);
+}
+```
+
+### Public Data Access
+```typescript
+// All data is publicly accessible
+list: {
+  description: "List all products (public access)",
+  handler: async () => {
+    return await getAllProducts();
+  }
+},
+
+get: {
+  description: "Get a product by ID (public access)",
+  handler: async ({ id }) => {
+    const product = await getProduct(id);
+    if (!product) throw new Error("Product not found");
+    return product;
+  }
+},
+```
+
+## Security Considerations
+
+### Input Validation
+```typescript
+// Always validate inputs with Zod schemas
+create: {
+  description: "Create a new product",
+  inputSchema: CreateProductSchema,
+  handler: async (data) => {
+    // data is fully validated and typed
+    const product = await createProduct(data);
+    return product;
+  },
+},
+```
+
+### Rate Limiting
+```typescript
+const server = createMCPServer({
+  name: "rate_limited_public_api",
+  resources: [resource],
+  
+  // Rate limiting for public access
+  rateLimit: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 100, // Requests per window
+    keyGenerator: (req) => {
+      // Rate limit by IP address
+      return req.ip || 'unknown';
+    },
+  },
+});
+```
+
+### Data Sanitization
+```typescript
+// Sanitize inputs to prevent injection attacks
+const sanitizeInput = (input: string) => {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove potential HTML tags
+    .substring(0, 1000); // Limit length
+};
+
+handler: async (data) => {
+  const sanitizedData = {
+    ...data,
+    description: data.description ? sanitizeInput(data.description) : undefined,
+    name: sanitizeInput(data.name),
+  };
+  
+  return await createProduct(sanitizedData);
+}
+```
+
+## Environment Configuration
+
+### Development Settings
+```bash
+# No authentication required
+SERVER_URL=http://localhost:3000
+PORT=3000
+
+# Optional: Rate limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+### Production Considerations
+```typescript
+const serverConfig = process.env.NODE_ENV === 'production' ? {
+  // Production: stricter settings
+  rateLimit: { windowMs: 15 * 60 * 1000, limit: 50 },
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://yourdomain.com'],
+    credentials: false,
+  },
+} : {
+  // Development: relaxed settings
+  rateLimit: { windowMs: 15 * 60 * 1000, limit: 1000 },
+  cors: {
+    origin: true, // Allow all origins in development
+    credentials: false,
+  },
+};
+```
+
+## Usage Examples
+
+### HTTP Requests
+```bash
+# No authentication required
+curl http://localhost:3000/api/products
+curl -X POST http://localhost:3000/api/products -d '{"name":"Product"}'
+curl -X PUT http://localhost:3000/api/products/123 -d '{"name":"Updated Product"}'
+curl -X DELETE http://localhost:3000/api/products/123
+```
+
+### Programmatic Usage
+```typescript
+const response = await fetch('http://localhost:3000/api/products', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'New Product',
+    description: 'Product description',
+    price: 29.99,
+  }),
+});
+
+const product = await response.json();
+```
+
+### MCP Client Usage
+```typescript
+// MCP clients can connect without authentication
+const client = await createMCPClient({
+  serverUrl: 'http://localhost:3000',
+  // No auth required
+});
+
+// Use MCP tools
+const products = await client.tools.list_products();
+const product = await client.tools.get_product({ id: '123' });
+```
+
+## Best Practices
+
+1. **Input Validation**: Always validate all inputs with Zod schemas
+2. **Rate Limiting**: Implement rate limiting to prevent abuse
+3. **Data Sanitization**: Sanitize inputs to prevent injection attacks
+4. **Error Handling**: Provide clear, actionable error messages
+5. **CORS Configuration**: Configure CORS appropriately for your use case
+6. **Monitoring**: Monitor API usage and implement logging
+7. **Documentation**: Provide clear API documentation for public consumption
+8. **Versioning**: Consider API versioning for public APIs
+9. **Backup Strategy**: Implement data backup for public data
+10. **Legal Considerations**: Ensure compliance with data protection regulations
+description: No authentication patterns and security considerations for public MCP servers
+globs: ["**/*.ts", "**/*.tsx", "**/*.js"]
+alwaysApply: false
+---
+description:
+globs:
+alwaysApply: false
+---

@@ -47,7 +47,7 @@ handler: async (data) => {
 curl http://localhost:3000/api/products
 curl -X POST http://localhost:3000/api/products -d '{"name":"Product"}'
 ```
-description:
-globs:
+description: Quick start guide for Express + No Auth template
+globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
 ---
