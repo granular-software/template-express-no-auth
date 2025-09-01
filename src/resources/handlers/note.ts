@@ -8,12 +8,14 @@ const notes: Note[] = [
     id: "1",
     title: "Welcome Note",
     content: "This is a public note that anyone can access.",
+    authorId: "public",
     createdAt: new Date("2024-01-01"),
   },
   {
     id: "2", 
     title: "Getting Started",
     content: "This server has no authentication - all data is public.",
+    authorId: "public",
     createdAt: new Date("2024-01-02"),
   },
 ];
@@ -32,14 +34,25 @@ export const noteResource = createResource({
       },
     },
     list: {
-      description: "List all notes (public access)",
-      handler: async () => {
-        console.log("Listing all notes (no auth required)");
+      description: "List all notes (public access) or filter by authorId",
+      inputSchema: z.object({
+        authorId: z.string().optional().describe("Filter notes by author ID"),
+      }),
+      handler: async ({ authorId }) => {
+        console.log("Listing notes (no auth required)", authorId ? `filtered by author: ${authorId}` : "");
+        if (authorId) {
+          return notes.filter((note) => note.authorId === authorId);
+        }
         return notes;
       },
     },
     create: {
       description: "Create a new note (public access)",
+      inputSchema: z.object({
+        title: z.string().describe("Note title"),
+        content: z.string().describe("Note content"),
+        authorId: z.string().optional().describe("Author ID (optional)"),
+      }),
       handler: async (data) => {
         console.log("Creating note (no auth required):", data);
         
@@ -47,6 +60,7 @@ export const noteResource = createResource({
           id: (notes.length + 1).toString(),
           title: data.title || "Untitled",
           content: data.content || "",
+          authorId: data.authorId || "anonymous",
           createdAt: new Date(),
         };
         
@@ -72,10 +86,17 @@ export const noteResource = createResource({
       description: "Search notes by content (public access)",
       inputSchema: z.object({
         query: z.string().describe("Search query"),
+        authorId: z.string().optional().describe("Filter by author ID"),
       }),
-      handler: async ({ query }) => {
-        console.log(`Searching notes for "${query}" (no auth required)`);
-        return notes.filter((note) => 
+      handler: async ({ query, authorId }) => {
+        console.log(`Searching notes for "${query}" (no auth required)`, authorId ? `filtered by author: ${authorId}` : "");
+        let filteredNotes = notes;
+        
+        if (authorId) {
+          filteredNotes = notes.filter((note) => note.authorId === authorId);
+        }
+        
+        return filteredNotes.filter((note) => 
           note.content.toLowerCase().includes(query.toLowerCase()) ||
           note.title.toLowerCase().includes(query.toLowerCase())
         );

@@ -6,7 +6,7 @@ Simple MCP server without authentication - perfect for public APIs and developme
 
 ```bash
 git clone <template-repo>
-cd template-express-no-auth
+cd <template-repo>
 npm install
 npm run dev
 ```
